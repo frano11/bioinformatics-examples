@@ -1,0 +1,1192 @@
+---
+title: "Spatial Tutorial: Mouse Brain Section (Coronal) – 10x Genomics"
+author: "Frano Malinarich G."
+Company: "Doppelganger Biosystem GmbH"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    number-sections: true
+    fig-width: 8
+    fig-height: 6
+    code-fold: true
+    code-tools: true
+    code-link: true
+    code-download: true
+    css: 
+      - styles.css
+editor: visual
+resources:
+  - logo.png
+execute:
+  warning: false
+  message: false
+---
+
+## Spatial transcriptomics
+
+Tutorial: 
+<https://satijalab.org/seurat/articles/spatial_vignette>
+
+Source: 10XGenomics, Mouse brain section (coronal) <https://www.10xgenomics.com/datasets/mouse-brain-section-coronal-1-standard-1-0-0>
+
+## *Loading / Installing package*
+
+```{r}
+#| message: false   # Suppresses "Loading package" messages
+#| warning: false   # Suppresses version mismatch warnings
+
+# Installing necessary packages
+# install.packages("extrafont")
+# BiocManager::install("SpatialExperiment")
+# install.packages('Rfast2')
+# install.packages("Boruta")
+# Install Bioconductor manager (if not already installed)
+# Install mouse annotation database
+# BiocManager::install("org.Mm.eg.db")
+
+# Load packages
+library(conflicted)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(tidyverse)
+library(flextable)
+library(extrafont)
+# font_import()
+# loadfonts(device = "all")
+library(officer)
+library(cowplot) # For plot arrangement
+library(gridExtra) # For grid-based layout
+library(grid)
+library(Rfast2)
+library(org.Mm.eg.db)  # For Mus musculus (mouse)
+library(clusterProfiler)
+library(SingleCellExperiment)
+library(SpatialExperiment)
+
+# Resolve conflicts
+conflict_prefer("filter", "dplyr")
+conflict_prefer("combine", "dplyr")
+conflict_prefer("setdiff", "base")  # Specify base::setdiff to avoid errors
+conflict_prefer("rename", "dplyr")
+conflict_prefer("select", "dplyr")
+conflict_prefer("width", "flextable")
+```
+
+## *Load spatial RNA sequencing data*
+
+```{r}
+# Load data
+data_dir = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal"
+brain <- Load10X_Spatial(data.dir = data_dir,
+                         filename = "V1_Adult_Mouse_Brain_filtered_feature_bc_matrix.h5",
+                         assay = "Spatial",
+                         slice = "slice1",
+                         filter.matrix = TRUE,
+                         to.upper = FALSE,
+                         image = NULL)
+
+
+# > brain
+# An object of class Seurat 
+# 31053 features across 2698 samples within 1 assay 
+# Active assay: Spatial (31053 features, 0 variable features)
+#  1 layer present: counts
+#  1 spatial field of view present: slice1
+
+
+```
+
+## *QC analysis*
+
+```{r}
+# View first few rows of metadata
+head(brain@meta.data)
+# view(brain@meta.data)
+# View(brain) #'View' and 'view' cannot be rendered in HTML so comment out, replace with 'head()'
+colnames(brain@meta.data) 
+
+# Mitochondrial Gene Percentage
+brain[["percent.mt"]] <- PercentageFeatureSet(brain, pattern = "^mt-") 
+
+# Violin plot for spatial counts
+VlnPlot(brain, features = c("nCount_Spatial", "nFeature_Spatial", "percent.mt"), pt.size = 0.1)   + NoLegend()
+
+# Filter low-quality spots
+# brain <- subset(
+#   brain,
+#   nCount_Spatial > 500 & 
+#   nFeature_Spatial > 300 & 
+#   percent.mt < 20
+# )
+
+# Ribosomal Protein Gene Percentage 
+brain[["percent.rb"]] <- PercentageFeatureSet(brain, pattern = "^Rp[sl]")  
+# Elevated ribosomal RNA can indicate residual cytoplasmic RNA or stress.
+
+FeatureScatter(brain, feature1 = "percent.rb", feature2 = "nCount_Spatial") 
+# High percent.rb + low nCount_Spatial → Technical artifact (filter). 
+FeatureScatter(brain, feature1 = "percent.rb", feature2 = "percent.mt")
+# High percent.rb + high percent.mt → Cell stress (consider filtering).
+
+VlnPlot(brain, features = c("nCount_Spatial", "nFeature_Spatial", "percent.mt", "percent.rb"), pt.size = 0.1)   + NoLegend()
+
+SpatialFeaturePlot(brain, features = "percent.rb", alpha = c(0.1, 2)) + theme(legend.position = "right")
+
+SpatialFeaturePlot(brain, features = 
+                           "nCount_Spatial") + theme(legend.position = "right")
+
+SpatialFeaturePlot(brain, features = 
+                           "nFeature_Spatial") + theme(legend.position = "right")
+
+
+# Range of counts and features
+range(brain@meta.data$nCount_Spatial) # 558 149086
+range(brain@meta.data$nFeature_Spatial) # 403 10691
+range(brain@meta.data$percent.mt) # 5.726924 44.657763
+range(brain@meta.data$percent.rb) # 3.518981 23.129093 # normally, the brain has a high % of ribosome
+# 23.1%: Moderately high but plausible for brain regions with active protein synthesis (e.g., hippocampus).
+# Do NOT filter solely on ribosomal % unless: Spots are outliers (e.g., >25%) AND correlate with low RNA quality.
+ 
+summary(brain$nCount_Spatial)  # Confirm min >500
+summary(brain$nFeature_Spatial)  # Confirm min >300
+summary(brain$percent.mt)  # Confirm max <20%
+
+```
+
+## *Data pre-processing: normalization, scaling and FindSpatiallyVariableFeatures*
+
+```{r}
+
+head(brain@meta.data,3)
+brain@commands$SCTransform.Spatial
+
+#########
+#########
+#########
+
+# 1. Preprocessing
+brain <- SCTransform(brain, assay = "Spatial", new.assay.name = "SCT", verbose = FALSE)
+
+Seurat::Assays(brain) # expected output: "Spatial" "SCT"
+
+# The second step FindSpatiallyVariableFeatures() is OPTIONAL!
+# This step: 
+# 1. Used to find genes with spatial expression gradients (e.g., Moran's I).
+# 2. Not required for standard clustering/visualization (UMAP, spatial plots).
+
+# 2. Set SCT as active assay and find spatially variable features
+DefaultAssay(brain) <- "SCT"
+
+brain <- FindSpatiallyVariableFeatures(
+  brain,
+  assay = "SCT",
+  features = VariableFeatures(brain), # this argument is important!
+  selection.method = "moransi",
+  verbose = TRUE
+)
+
+# Warning message:
+# In dist(x = pos) : NAs introduced by coercion
+# suggests that there are missing or non-numeric values in the spatial coordinates used for the Moran’s I computation.
+
+# The "features = VariableFeatures(brain)" allows to get more biologically meaningful spatially variable genes.
+# Without "features = VariableFeatures(brain)" 
+
+# Verify the presence of NAs in 'coords'
+sum(is.na(brain@images$slice1$centroids@coords)) # If you get 0, the coordinates are fine. There are no NAs.
+str(brain@images$slice1$centroids@coords) # coordinates 'x' and 'y' are numeric "num [1:2698, 1:2] 7237 1611 8315 2927 6280 ..."
+colnames(brain@images$slice1$centroids@coords)
+# brain@images$slice1$centroids@coords
+
+# Check if Spatially Variable Features Exist
+# Check if Moran's I results are stored in metadata
+svf_info <- SVFInfo(brain, assay = "SCT")
+
+# If empty, check the assay's meta.features directly
+moran_results <- brain@assays$SCT@meta.features
+
+# Look for columns like "MoransI_observed" or "moransi"
+print(colnames(moran_results))
+
+# Expected results
+# [1] "MoransI_observed"                "MoransI_p.value"                
+# [3] "moransi.spatially.variable"      "moransi.spatially.variable.rank"
+
+# getting this output means that FindSpatiallyVariableFeatures() function worked, and results are stored in the SCT assay’s metadata.
+
+# View(brain)
+
+# Check How Many Genes Have Non-NA Moran’s I Values
+sum(!is.na(moran_results$MoransI_observed)) # 3000
+# 1️⃣ There are 3000 genes with valid Moran’s I values, which is a normal number for spatially variable genes.
+# Why Are Many Other Genes NA? because only Highly Variable Genes Were Analyzed.
+# By default, FindSpatiallyVariableFeatures() only computes Moran’s I for genes in VariableFeatures(brain) (often 3000 genes).
+# Other genes were not tested, which is why they show NA.
+# 2️⃣  Genes with Low or No Expression
+# If a gene has low counts across spots, it gets excluded.
+# Moran’s I needs enough expression variation to be meaningful.
+# 3️⃣ Sparse or Noisy Data
+# Some genes might be filtered due to low-quality spots or technical artifacts.
+
+hist(moran_results$MoransI_observed, breaks = 50, main = "Distribution of Moran's I", xlab = "Moran's I Score")
+
+summary(moran_results$MoransI_observed)
+# Interpretation:
+# 14968 genes have NA values were ignored because they were not selected as highly variable genes (via " VariableFeatures(brain)")
+# 3000 genes were selected as the most spatial variable genes.
+# This filtering step reduces noise and focuses on biologically relevant genes. It's more meaningful.
+# Moran’s I values range from -0.003 to 0.685.
+# Median Moran’s I = 0.149 → most genes show moderate spatial autocorrelation.
+# Mean Moran’s I = 0.175, with a max value of 0.685 → some genes have strong spatial patterns.
+# 1️⃣ Your spatial analysis worked correctly → The non-NA genes have meaningful Moran’s I values.
+# 2️⃣ The distribution is reasonable → Many genes have moderate spatial variation, and some have strong spatial patterns.
+# 3️⃣ You can confidently use the top Moran’s I genes for visualization & clustering.
+
+# 
+length(VariableFeatures(brain))
+
+# How to use the Spatial Variable Genes (SVG)
+# Identify Top Spatially Variable Genes
+top_spatial_genes <- moran_results %>%
+  dplyr::filter(moransi.spatially.variable) %>%
+  dplyr::arrange(desc(MoransI_observed)) %>%
+  head(n = 20)
+
+# Visualize Spatial Expression
+SpatialFeaturePlot(
+  brain,
+  features = rownames(top_spatial_genes)[1:4],  # Top 4 genes
+  pt.size.factor = 2.5,
+  alpha = c(0.1, 2)
+)
+
+```
+
+## *Dimensional reduction, clustering and visualizations*
+
+```{r}
+# Similar to scRNAseq analysis
+brain <- RunPCA(brain, assay = "SCT", verbose = FALSE)
+
+# ElbowPlot to determine optimal PCs
+ElbowPlot(brain, ndims = 50) # compared to scRNAseq, the amount of PCs are typically 30-50. ndims --> how many PCs to display in elbow plot. For spatial data (Visium): ndims = 50 is a good stating point
+
+brain <- FindNeighbors(brain, reduction = "pca", dims = 1:30)
+brain <- FindClusters(brain, verbose = FALSE)
+brain <- RunUMAP(brain, reduction = "pca", dims = 1:30)
+
+# > brain
+# An object of class Seurat 
+# 49131 features across 2698 samples within 2 assays 
+# Active assay: SCT (18078 features, 3000 variable features)
+#  3 layers present: counts, data, scale.data
+#  1 other assay present: Spatial
+#  2 dimensional reductions calculated: pca, umap
+#  1 spatial field of view present: slice1
+
+p5 <- DimPlot(brain, 
+              reduction = "umap", 
+              label = TRUE, 
+              pt.size = 2.5) + 
+  ggtitle("UMAP spots representation") +
+  theme(
+    plot.title = element_text(size = 16, family = "Arial"),
+    text = element_text(family = "Arial"))
+
+p6 <- SpatialDimPlot(
+  brain,
+  label = TRUE,
+  label.size = 5,
+  pt.size.factor = 2.5,
+  image.alpha = 0  # Make spatial image transparent
+) + 
+  ggtitle("Spatial spots representation") +
+  theme(
+    plot.title = element_text(size = 16, family = "sans-serif", face ="bold"),
+    text = element_text(family = "sans-serif"),
+    panel.grid = element_line(color = "grey"),
+    legend.text = element_text(size = 14),   # Increase cluster number font size
+    legend.key.size = unit(0.5, "cm"),
+    panel.background = element_rect(fill = "white", color = "white"),  # Plot area
+    plot.background = element_rect(fill = "white", color = "white")    # Entire background
+  )
+
+p5 + p6
+
+```
+
+## *Summary table of spots identifiers and spot amount*
+
+```{r}
+# view(brain@meta.data)
+colnames(brain@meta.data)
+table(brain@meta.data$seurat_clusters)
+
+# Install if needed
+# install.packages("flextable")
+
+# Create frequency table of cluster counts
+cluster_counts <- table(brain@meta.data$seurat_clusters)
+
+# Convert to data frame and calculate percentages
+spot_table <- as.data.frame(cluster_counts) %>%
+  rename(Spot = Var1, `Amount of Spots` = Freq) %>%
+  mutate(
+    `% from total` = `Amount of Spots` / sum(`Amount of Spots`),
+    `% from total` = scales::percent(`% from total`, accuracy = 0.1)
+  )
+
+# Add total row
+total_spots <- sum(spot_table$`Amount of Spots`)
+total_row <- data.frame(
+  Spot = "Total",
+  `Amount of Spots` = total_spots,
+  `% from total` = "100.0%",
+  check.names = FALSE
+)
+
+# Combine with original data
+spot_table <- rbind(spot_table, total_row)
+
+# Create flextable
+ft <- flextable(spot_table) %>%
+  theme_vanilla() %>%  # Apply theme FIRST
+  set_header_labels(
+    Spot = "Cluster identifier",
+    `Amount of Spots` = "Amount of Spots",
+    `% from total` = "% from total"
+  ) %>%
+  add_header_lines(values = "Cluster representation and Spot amount from mouse brain section (coronal)*") %>%
+  add_footer_lines(values = c("* Source: https://www.10xgenomics.com/datasets/mouse-brain-section-coronal-1-standard-1-0-0", "*Platform: Visium Spatial 10X Genomics.", "*Preservation method: Fresh Frozen")) %>% 
+  # Alignment
+  align(align = "center", part = "header") %>%     # Center header (including title line)
+  align(align = "center", part = "body") %>%       # Center all body cells
+  align(align = "left", part = "footer") %>%       # Left-align footnote
+  # Total row styling
+  bold(~ Spot == "Total") %>%
+  bg(~ Spot == "Total", bg = "#2D2D2D", part = "body") %>%  
+  color(~ Spot == "Total", color = "white", part = "body") %>%  
+  # Borders
+  border_inner_h(border = fp_border(color = "#D3D3D3", width = 0.5)) %>%
+  border_outer(border = fp_border(color = "#D3D3D3", width = 0.5)) %>%
+  # Font
+  fontsize(size = 11, part = "all") %>%
+  font(fontname = "Arial", part = "all") %>% 
+  autofit()
+
+print(ft)
+
+# Convert flextable to a grob
+ft_grob <- flextable::gen_grob(ft)
+
+# Create a vertical layout for p5 and p6
+left_column <- plot_grid(p5, p6, ncol = 1, rel_heights = c(1, 1))
+
+# Combine left_column and ft_grob horizontally
+final_layout <- grid.arrange(
+  left_column, 
+  ft_grob,
+  nrow = 1,
+  widths = c(1, 1.2),  # Adjust widths (left plots vs. table)
+  padding = unit(0.5, "cm")  # Add spacing between elements
+)
+
+# Save
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_transcript_Visium_mouse_brain.png", final_layout, width = 16, height = 8, dpi = 600)
+
+# view(brain)
+brain
+# View(brain)
+head(brain@images$slice1@boundaries$centroids@coords)
+head(brain@images$slice1@boundaries$centroids@cells)
+head(brain@images$slice1@scale.factors)
+head(brain@assays$SCT@data)
+
+```
+
+## *Differential Expression Gene (DEG) analysis across spatial clusters*
+
+```{r}
+Idents(brain) <- "seurat_clusters"  # Use your cluster column from metadata
+levels(brain@active.ident)  # Verify cluster levels (0, 1, 2, ...)
+
+# # Identify DEGs for all clusters (Wilcoxon test by default)
+all_markers <- FindAllMarkers(
+  brain,
+  logfc.threshold = 0.25,       # Minimum log2 fold change
+  min.pct = 0.1,                # Gene detected in at least 10% of cells in either cluster
+  only.pos = TRUE,              # Report only positive markers
+  test.use = "wilcox",          # Default test (alternatives: "MAST", "DESeq2", etc.)
+  return.thresh = 0.01          # Return genes with adjusted p-value < 0.01
+)
+
+# View top 5 markers per cluster
+top_markers <- all_markers %>%
+  group_by(cluster) %>%
+  slice_max(n = 5, order_by = avg_log2FC)
+# View(top_markers) # View cannot be rendered in HTML so comment out
+head(brain)
+
+# Comparing cluster 0 vs cluster 1
+# cluster0_vs_1 <- FindMarkers(
+#   brain,
+#   ident.1 = 0,
+#   ident.2 = 1,
+#   logfc.threshold = 0.25,
+#   min.pct = 0.1
+# )
+
+# Interpreting results
+# Filter significant markers (adjust p-value cutoff)
+significant_markers <- all_markers[all_markers$p_val_adj < 0.01, ]
+
+# Plot heatmap of top markers
+DoHeatmap(
+  brain,
+  features = top_markers$gene,
+  group.colors = scales::hue_pal()(length(levels(brain))),  # Cluster colors
+  size = 3
+) + theme(axis.text.y = element_text(size = 8))
+
+# Visualize Marker Expression
+# Feature plot for a top gene (e.g., "Gfap")
+FeaturePlot(
+  brain,
+  features = "Tnnt1",           # Replace with your gene of interest
+  reduction = "umap",          # Or "spatial" for spatial visualization
+  pt.size = 1.5
+)
+
+# Violin plot
+VlnPlot(
+  brain,
+  features = "Tnnt1",
+  pt.size = 0,
+  ncol = 1
+)
+
+# Save DEG results
+# write.csv(all_markers, "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_mouse_brain_DEG_all_clusters.csv")
+
+# Save Seurat object with markers
+# saveRDS(brain, file = "brain_with_markers.rds")
+
+# Spatial Feature Plots
+# Example: Plot expression of gene "Tnnt1" on spatial coordinates, highly expressed in spot #3
+SpatialFeaturePlot(
+  brain,
+  features = "Tnnt1",          # Replace with your gene of interest
+  pt.size.factor = 2.5,        # Adjust spot size (matching your SpatialDimPlot)
+  alpha = c(0.1, 2),           # Adjust transparency (min and max expression)
+  image.alpha = 0,             # Hide the tissue image (optional)
+  ncol = 1                     # Number of columns (if plotting multiple genes)
+) +
+  ggtitle("Spatial expression of Tnnt1, highly expressed in cluster 3") +
+  theme(
+    plot.title = element_text(size = 16, family = "sans-serif", face = "bold"),
+    legend.text = element_text(size = 12)
+  ) +
+  scale_fill_viridis_c(option = "magma")  # Use viridis/magma for better contrast
+
+# Plot two genes in a single row
+cluster3_cluster1_highestDEG <- SpatialFeaturePlot(
+  brain,
+  features = c("Tnnt1", "Lypd1"),  # Replace with your genes of interest
+  pt.size.factor = 2.5,           # Match your SpatialDimPlot settings
+  alpha = c(0.1, 3),              # Transparency range (0.1 for low, 1 for high)
+  image.alpha = 0,                # Hide tissue image (optional)
+  ncol = 2                        # Arrange plots in 2 columns
+) +
+  plot_annotation(
+    title = "Spatial Expression of Tnnt1 (cluster 3, left) and Lypd1 (cluster 1, right)"
+  ) +
+  theme(
+    plot.title = element_text(
+      size = 30,                   # Larger font size
+      family = "sans-serif",       # Font family
+      face = "bold",               # Bold text
+      hjust = 0.5,                # Center-align title
+      margin = margin(t = 20)     # Add top margin to prevent cutoff
+    )
+  ) +
+  scale_fill_viridis_c(option = "magma")  # Consistent color scale
+
+print(cluster3_cluster1_highestDEG)
+
+# Save
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_highest_DEG_Visium_mouse_brain.png", cluster3_cluster1_highestDEG, width = 16, height = 8, dpi = 600)
+
+# Display a safe summary of the Seurat object
+str(brain, max.level = 2)  # Show top-level structure only
+
+###########
+###########
+
+# Visualize Spatial Expression according to SVG
+# If these genes show clear gradients or regional enrichment
+SpatialFeaturePlot(
+  brain,
+  features = c("Sparc", "Camk2n1", "Pmch", "Nrgn"),
+  pt.size.factor = 2.5,
+  alpha = c(0.1, 3),
+  image.alpha = 0.25
+)
+
+# GO Enrichment analysis
+enrich_result <- enrichGO(
+  gene = rownames(top_spatial_genes),
+  OrgDb = org.Mm.eg.db,     # org.Hs.eg.db (human)
+  keyType = "SYMBOL",       # or "ENSEMBL" if genes are Ensembl IDs
+  ont = "BP"               # Biological Process ontology
+)
+# Visualize results
+go_plot <- dotplot(enrich_result, showCategory = 10,
+        orderBy = "GeneRatio", title = "Top Enriched GO Terms (Biological Process)") 
+# top 10 most significantly enriched GO terms based on adjusted p-value or other ranking metrics.
+# Gene Ratio: 0.15 means p = 1e-10
+
+print(go_plot)
+
+# ggsave(
+#   filename = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_brain_mouse_go_enrichment_highres.png",
+#   plot = go_plot,
+#   width = 12,                      # Wider for better label readability
+#   height = 8,
+#   dpi = 600,                       # Higher resolution for publications
+#   bg = "white"                     # Set background to white
+# )
+
+```
+
+## *Brain region annotation / Summary table*
+
+```{r}
+# Install if not installed
+# BiocManager::install("ABAData") --> DEPRECATED
+# BiocManager::install("ABAbilaR") --> DEPRECATED
+# BiocManager::install("SingleR")
+# BiocManager::install("spatialLIBD")
+# remotes::install_github("benfulcher/allen_clr") --> DEPRECATED
+
+library(Seurat)
+library(SingleR)
+# library(ABAData)  # Allen Brain Atlas --> DEPRECATED
+# library(ABAbilaR) # Interface with Allen Brain Atlas --> DEPRECATED
+library(spatialLIBD)
+
+# Assign broad brain regions manually based on spatial clustering
+brain$brain_region <- case_when(
+  brain$seurat_clusters %in% c(0, 8, 6) ~ "Neocortex", ##
+  brain$seurat_clusters %in% c(16, 4, 17) ~ "Hippocampal region",
+  brain$seurat_clusters %in% c(3) ~ "Thalamus", ##
+  brain$seurat_clusters %in% c(2) ~ "Hypothalamus", ##
+  brain$seurat_clusters %in% c(13, 14) ~ "Caudatoputamen",
+  brain$seurat_clusters %in% c(1, 11) ~ "Allocortex",
+  brain$seurat_clusters %in% c(15) ~ "Striatum-like amygdalar nuclei", ##
+  brain$seurat_clusters %in% c(9, 10, 5, 7) ~ "Fiber tracts", ##
+  TRUE ~ "N/A"
+)
+
+table(brain$brain_region)  # Count spots per region
+head(brain@meta.data)  # View metadata
+colnames(brain@meta.data)
+
+
+p7 <- DimPlot(
+  brain, 
+  group.by = "brain_region", 
+  label = FALSE, 
+  repel = TRUE,            # Automatically separates labels
+  pt.size = 2.5,           # Size of points on UMAP
+  label.size = 5,          # Font size of cluster labels
+  label.box = TRUE,        # Adds background box to labels
+  alpha = 0.8
+) + 
+  ggtitle("UMAP Brain Region Annotation") +
+  NoAxes() +
+  guides(
+    # Use `color` instead of `fill` for DimPlot legends
+    color = guide_legend(
+      title = "Brain Region",
+      override.aes = list(
+        size = 6,          # Size of color dots in legend
+        alpha = 1          # Ensure full opacity for legend keys
+      ),
+      ncol = 1             # Single column for vertical legend
+    )
+  ) +
+  theme(
+    plot.title = element_text(size = 16, family = "sans-serif", face = "bold"),
+    text = element_text(family = "sans-serif"),
+    legend.title = element_text(size = 14),  # Legend title font size
+    legend.text = element_text(size = 14),   # Legend text font size
+    legend.key.size = unit(1, "cm"),         # Size of legend key boxes
+    legend.spacing.y = unit(0.5, "cm")       # Vertical spacing between legend items
+  )
+
+p8 <- SpatialDimPlot(
+  brain,
+  group.by = "brain_region",
+  label = TRUE,    # Labels on (TRUE) or off (FALSE) on the brain regions
+  repel = TRUE,    # Prevents overlap of labels
+  label.size = 6,
+  pt.size.factor = 3.5,
+  image.alpha = 0.5,
+  alpha = 0.8
+) + 
+  ggtitle("Spatial Brain Region Annotation") +
+  # Customize legend title and key size
+  guides(
+    fill = guide_legend(
+      title = "Brain Region",  # New legend title
+      override.aes = list(size = 6)  # Increase color circle size
+    )
+  ) +
+  theme(
+    plot.title = element_text(size = 16, family = "sans-serif", face = "bold"),
+    text = element_text(family = "sans-serif"),
+    panel.grid = element_line(color = "grey"),
+    # legend.position = "none",  # Remove legend from the right side
+    legend.title = element_text(size = 14),  # Legend title font size
+    legend.text = element_text(size = 15),    # Legend text font size
+    legend.key.size = unit(1, "cm"),        # Overall legend key box size
+    panel.background = element_rect(fill = "white", color = "white"), # Plot area
+    plot.background = element_rect(fill = "white", color = "white")   # Entire background
+  )
+
+p9 <- SpatialDimPlot(
+  brain,
+  pt.size.factor = 3.5,
+  image.alpha = 1,
+  alpha = 0.0
+) + 
+  ggtitle("H&E Brain Region Coronal") +
+  # Semi-transparent white overlay
+  annotate(
+    "rect", 
+    xmin = -Inf, xmax = Inf, 
+    ymin = -Inf, ymax = Inf, 
+    fill = "white", alpha = 0.2  # Adjust alpha (0 = no overlay, 1 = fully white)
+  ) +
+  theme(
+    plot.title = element_text(size = 16, family = "sans-serif", face = "bold"),
+    legend.position = "none",          # Remove any residual legend
+    axis.title = element_blank(),      # Remove x/y axis titles
+    axis.text = element_blank(),       # Remove x/y axis text
+    axis.ticks = element_blank(),      # Remove axis ticks
+    panel.grid = element_blank(),      # Remove grid lines
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
+
+patch1 <- (p9 | p8) / p7
+print(patch1)
+
+# Save 'H&E (p9)'
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_H&E.png", p9, width = 16, height = 8, dpi = 600)
+
+# Save 'UMAP_regions (p7)'
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_UMAP_regions.png", p7, width = 16, height = 8, dpi = 600)
+
+# Save 'patch1'
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regions_patch.png", patch1, width = 16, height = 8, dpi = 600)
+
+# Save 'Brain_regions (p8)'
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regions.png", p8, width = 16, height = 8, dpi = 600)
+
+# Save 'Brain_regions (p8)'
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regionsNoLegends.png", p8, width = 16, height = 8, dpi = 600)
+
+# Define region-specific markers (expand with more genes)
+region_markers <- list(
+  Neocortex = c("Slc17a7", "Rorb", "Foxp2", "Cux1",      # Excitatory neurons
+                "Gad1","Gad2", "Pvalb", "Sst", "Vip",    # Inhibitory neurons
+                "Gfap", "Aqp4", "Aldh1l1", "Ptprc"),     # Glial cells
+  Hippocampus = c("Wfs1", "Nr3c2", "Rgs14",              # CA1
+                  "Slc17a7", "Grik1", "Prkcd",           # CA3
+                  "Prox1", "C1ql2", "Neurod1", "Hpca"),  # Dentate Gyrus (granule cells)
+  Thalamus = c("Gad2", "Npy", "Slc32a1",
+               "Calb1", "Vglut2","Foxp2", "Tbr1"),  # Excitatory thalamic neurons, Sensory relay neurons, Thalamocortical projection neurons
+  Hypothalamus = c("Oxt", "Avp","Cartpt" ,
+                   "Pomc", "Agrp", "Npy", "Hcrt", "Crh"),          # Arcuate nucleus
+  
+  Caudoputamen_Striatum = c("Cplx3","Drd1", "Drd2", "Ppp1r1b"),           # Dopamine receptors
+  Allocortex = c("Rasgrf2","Calb2","Pcp4"),
+  Striatum_like_Amygdalar_Nuclei = c("Cplx3","Tac2","Drd1", "Drd2",
+                                     "Pvalb", "Npy"),
+  FiberTracts = c("Mbp", "Plp1", "Mog", "Olig2", "Sox10", "Cldn11")              # Oligodendrocytes
+)
+
+# Neocortex region:
+# Marker Genes:
+# Excitatory neurons: Slc17a7, Rorb, Foxp2, Cux1
+# Inhibitory neurons: Gad1, Gad2, Pvalb, Sst, Vip
+# Glial cells: Gfap, Aqp4, Aldh1l1
+
+# Hippocampal region:
+# Marker Genes:
+# CA1 pyramidal neurons: Wfs1, Nr3c2, Rgs14
+# CA3 pyramidal neurons: Slc17a7, Grik1, Prkcd
+# Dentate gyrus (granule cells): Prox1, C1ql2, Neurod1
+
+# Thalamus region:
+# Marker Genes:
+# Calb1 (Calbindin)
+# Vglut2 (Slc17a6) – Excitatory thalamic neurons
+# Foxp2 – Sensory relay neurons
+# Tbr1 – Thalamocortical projection neurons
+
+# Hypothalamus region:
+# Marker Genes:
+# Oxt (Oxytocin)
+# Avp (Vasopressin)
+# Cartpt (Cocaine- and amphetamine-regulated transcript)
+# Hypothalamic nuclei: Pomc, Npy, Hcrt (Orexin), Crh (Corticotropin-releasing hormone)
+
+# Caudatoputamen (Striatum) region:
+# Marker Genes:
+# Drd1 (D1 dopamine receptor, direct pathway)
+# Drd2 (D2 dopamine receptor, indirect pathway)
+# Ppp1r1b (DARPP-32, marker of medium spiny neurons)
+# Foxp2 (Regulates motor function in striatal neurons)
+
+# Allocortex region:
+# Marker Genes:
+# Rasgrf2 (Piriform cortex)
+# Calb2 (Layer-specific cortical neurons)
+# Pcp4 (Parvalbumin interneurons)
+
+# Striatum-like Amygdalar Nuclei region:
+# Marker Genes:
+# Cplx3, Tac2 (Central amygdala)
+# Foxp2 (Basolateral amygdala)
+# Drd1, Drd2 (Dopamine receptor expression in striatum-like regions)
+# Pvalb, Npy (Interneurons in the amygdala)
+
+# Fiber Tracts region:
+# Marker Genes:
+# Mbp (Myelin basic protein, oligodendrocytes)
+# Plp1, Cnp (Myelination markers)
+# Olig2, Sox10 (Oligodendrocyte precursor cells)
+# Cldn11 (Tight junctions in myelin sheaths)
+
+# Dot plot to validate markers
+DotPlot(brain, features = unique(unlist(region_markers)), group.by = "brain_region") +
+  RotatedAxis() +
+  scale_color_viridis_c(option = "magma")
+
+
+# The current mapping has potential overlaps (e.g., cluster 11 in both Neocortex and Allocortex). Investigate ambiguous clusters:
+# Subset ambiguous clusters (e.g., cluster 11)
+cluster11 <- subset(brain, seurat_clusters == 11)
+
+# Find unique markers for cluster 11
+cluster11_markers <- FindMarkers(brain, ident.1 = 11, logfc.threshold = 0.5)
+head(cluster11_markers, 10)
+
+# Spatial plot of top marker
+SpatialFeaturePlot(brain, features = rownames(cluster11_markers)[1], pt.size.factor = 3)
+
+
+# Addressing NA region
+# Subset "N/A" clusters
+na_clusters <- subset(brain, brain_region == "N/A")
+
+# Find markers for "N/A" clusters
+na_markers <- FindAllMarkers(na_clusters, only.pos = TRUE)
+head(na_markers)
+
+# Check spatial distribution
+SpatialDimPlot(na_clusters, pt.size.factor = 3, image.alpha = 0.5)
+
+
+# Test if cluster markers are enriched in specific brain regions
+cluster0_markers <- FindMarkers(brain, ident.1 = 0, only.pos = TRUE)
+top_genes <- rownames(cluster0_markers)[1:50]  # Top 50 markers
+
+
+# Quality Control of Annotation
+# 1️⃣ Check if any region is overrepresented or missing
+prop.table(table(brain$brain_region)) * 100  # Get percentage of spots per region
+# 2️⃣ Check expression of key marker genes per region
+
+# Neocortex region:
+# Marker Genes:
+# Excitatory neurons: Slc17a7, Rorb, Foxp2, Cux1
+# Inhibitory neurons: Gad1, Gad2, Pvalb, Sst, Vip
+# Glial cells: Gfap, Aqp4, Aldh1l1
+FeaturePlot(brain, features = c("Pvalb", "Gfap", "Aldh1l1"), reduction = "umap")
+
+# Hippocampal region:
+# Marker Genes:
+# CA1 pyramidal neurons: Wfs1, Nr3c2, Rgs14
+# CA3 pyramidal neurons: Slc17a7, Grik1, Prkcd
+# Dentate gyrus (granule cells): Prox1, C1ql2, Neurod1
+# FeaturePlot(brain, features = c("Foxp2", "Gad1", "Neurod1"), reduction = "umap")
+
+# Thalamus region:
+# Marker Genes:
+# Calb1 (Calbindin)
+# Vglut2 (Slc17a6) – Excitatory thalamic neurons
+# Foxp2 – Sensory relay neurons
+# Tbr1 – Thalamocortical projection neurons
+# FeaturePlot(brain, features = c("Tbr1", "Slc17a6", "Calb1"), reduction = "umap")
+
+# Hypothalamus region:
+# Marker Genes:
+# Oxt (Oxytocin)
+# Avp (Vasopressin)
+# Cartpt (Cocaine- and amphetamine-regulated transcript)
+# Hypothalamic nuclei: Pomc, Npy, Hcrt (Orexin), Crh (Corticotropin-releasing hormone)
+# FeaturePlot(brain, features = c("Tbr1", "Slc17a6", "Calb1"), reduction = "umap")
+
+# Caudatoputamen (Striatum) region:
+# Marker Genes:
+# Drd1 (D1 dopamine receptor, direct pathway)
+# Drd2 (D2 dopamine receptor, indirect pathway)
+# Ppp1r1b (DARPP-32, marker of medium spiny neurons)
+# Foxp2 (Regulates motor function in striatal neurons)
+# FeaturePlot(brain, features = c("Tbr1", "Slc17a6", "Calb1"), reduction = "umap")
+
+# Allocortex region:
+# Marker Genes:
+# Rasgrf2 (Piriform cortex)
+# Calb2 (Layer-specific cortical neurons)
+# Pcp4 (Parvalbumin interneurons)
+# FeaturePlot(brain, features = c("Tbr1", "Slc17a6", "Calb1"), reduction = "umap")
+
+# Striatum-like Amygdalar Nuclei region:
+# Marker Genes:
+# Cplx3, Tac2 (Central amygdala)
+# Foxp2 (Basolateral amygdala)
+# Drd1, Drd2 (Dopamine receptor expression in striatum-like regions)
+# Pvalb, Npy (Interneurons in the amygdala)
+# FeaturePlot(brain, features = c("Tbr1", "Slc17a6", "Calb1"), reduction = "umap")
+
+# Fiber Tracts region:
+# Marker Genes:
+# Mbp (Myelin basic protein, oligodendrocytes)
+# Plp1, Cnp (Myelination markers)
+# Olig2, Sox10 (Oligodendrocyte precursor cells)
+# Cldn11 (Tight junctions in myelin sheaths)
+# FeaturePlot(brain, features = c("Tbr1", "Slc17a6", "Calb1"), reduction = "umap")
+
+########## Flextable - Brain regions ########## 
+
+# Create frequency table of region counts
+region_counts <- table(brain@meta.data$brain_region)
+
+# Convert to data frame and calculate percentages
+region_table <- as.data.frame(region_counts) %>%
+  rename(Region = Var1, `Amount of Spots` = Freq) %>%
+  mutate(
+    `% from total` = `Amount of Spots` / sum(`Amount of Spots`),
+    `% from total` = scales::percent(`% from total`, accuracy = 0.1)
+  )
+
+# Add total row
+total_spots <- sum(region_table$`Amount of Spots`)
+total_row <- data.frame(
+  Region = "Total",
+  `Amount of Spots` = total_spots,
+  `% from total` = "100.0%",
+  check.names = FALSE
+)
+
+# Combine with original data
+region_table <- rbind(region_table, total_row)
+
+# Create flextable
+ft <- flextable(region_table) %>%
+  theme_vanilla() %>%
+  set_header_labels(
+    Region = "Brain region",
+    `Amount of Spots` = "Amount of Spots",
+    `% from total` = "% from total"
+  ) %>%
+  add_header_lines(values = "Regional transcriptomic representation of mouse brain section (coronal)*") %>%
+  add_footer_lines(values = c("* Source: https://www.10xgenomics.com/datasets/mouse-brain-section-coronal-1-standard-1-0-0", 
+                            "* Platform: Visium Spatial 10X Genomics",
+                            "* Preservation method: Fresh Frozen")) %>% 
+  align(align = "center", part = "header") %>%
+  align(align = "center", part = "body") %>%
+  align(align = "left", part = "footer") %>%
+  bold(~ Region == "Total") %>%
+  bg(~ Region == "Total", bg = "#2D2D2D", part = "body") %>%  
+  color(~ Region == "Total", color = "white", part = "body") %>%
+  border_inner_h(border = fp_border(color = "#D3D3D3", width = 0.5)) %>%
+  border_outer(border = fp_border(color = "#D3D3D3", width = 0.5)) %>%
+  fontsize(size = 16, part = "all") %>%
+  font(fontname = "Arial", part = "all") %>% 
+  autofit()
+
+print(ft)
+
+# Save 'ft'
+# Convert flextable to a grob
+# ft_grob2 <- flextable::gen_grob(ft)
+# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_transcript_Visium_mouse_brain_regions_table.png", ft_grob2, width = 10, height = 8, dpi = 600)
+
+# view(brain@meta.data)
+
+#################
+#################
+# Identify the top markers for your specific dataset
+# 1. ROC Analysis (AUC calculation)
+top_markers_roc <- FindAllMarkers(
+  brain,
+  group.by = "brain_region",
+  test.use = "roc",            # ROC test for AUC values
+  logfc.threshold = 0.25,
+  only.pos = TRUE,
+  min.pct = 0.1                # Gene detected in ≥10% of spots in either region
+)
+
+# 2. Get top 5 markers per region (sorted by AUC power)
+top5_markers <- top_markers_roc %>%
+  group_by(cluster) %>%        # "cluster" = brain_region
+  arrange(desc(power)) %>%     # "power" = AUC (0.5 = random, 1 = perfect)
+  slice_head(n = 5)            # Top 5 per region
+
+# View results
+print(top5_markers, n = 45)
+
+# Dot plot of top markers (expression + percentage)
+DotPlot(
+  brain,
+  features = unique(top5_markers$gene),
+  group.by = "brain_region",
+  dot.scale = 8,
+  col.min = 0,
+  col.max = 3
+) + 
+  RotatedAxis() +
+  scale_color_viridis_c(option = "magma") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "right"
+  ) +
+  labs(
+    x = "Genes",
+    y = "Brain Region",
+    color = "Avg. Expression",
+    size = "% Spots Expressed"
+  )
+
+# DEGs between Neocortex & Thalamus
+neocortex_vs_thalamus <- FindMarkers(
+  brain, 
+  ident.1 = "Neocortex", 
+  ident.2 = "Thalamus", 
+  group.by = "brain_region", 
+  logfc.threshold = 0.25, 
+  test.use = "wilcox"
+)
+
+head(neocortex_vs_thalamus)
+
+# library(clusterProfiler)
+# library(org.Mm.eg.db)  # Mouse gene annotations
+
+# Convert top genes to ENTREZ IDs
+genes_entrez <- mapIds(
+  org.Mm.eg.db, 
+  keys = top5_markers$gene, 
+  column = "ENTREZID", 
+  keytype = "SYMBOL",
+  multiVals = "first"
+)
+
+# Perform GO enrichment (Biological Process)
+go_results <- enrichGO(
+  gene = na.omit(genes_entrez), 
+  OrgDb = org.Mm.eg.db, 
+  keyType = "ENTREZID", 
+  ont = "BP", 
+  pAdjustMethod = "BH"
+)
+
+# Plot top GO terms
+dotplot(go_results, showCategory = 10, title = "GO Enrichment: Brain Regions")
+
+
+######### Flextable of highly expressed genes per brain region ###########
+
+# Prepare table
+marker_table <- top5_markers %>%
+  select(gene, cluster, power, avg_log2FC) %>%
+  rename(
+    Gene = gene,
+    `Brain Region` = cluster,
+    `AUC Power` = power,
+    `Log2 FC` = avg_log2FC
+  ) %>%
+  mutate(`AUC Power` = round(`AUC Power`, 2))  # Round AUC to 2 decimals
+
+# Create flextable
+ft_markers <- flextable(marker_table) %>%
+  theme_vanilla() %>%
+  set_header_labels(
+    Gene = "Gene",
+    `Brain Region` = "Brain Region",
+    `AUC Power` = "AUC Power",
+    `Log2 FC` = "Log2 Fold Change"
+  ) %>%
+  add_header_lines(values = "Top 5 Predictive Genes per Brain Region (ROC Analysis)*") %>%
+  add_footer_lines(values = "*AUC Power: 1 = perfect classifier, 0.5 = random.") %>%
+  align(align = "center", part = "header") %>%
+  align(align = "center", part = "body") %>%
+  bg(~ `AUC Power` > 0.9, bg = "#E6F3FF", part = "body") %>%  # Highlight high AUC
+  border_outer(border = fp_border(color = "#D3D3D3")) %>%
+  font(fontname = "Arial", part = "all") %>%
+  autofit()
+
+print(ft_markers)
+
+# view(brain@meta.data)
+
+# Save Seurat object 'with markers'brain'
+# saveRDS(brain, file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_transcript_Visium_mouse_brain_regions.rds")
+
+```
+
+## *Converting Seurat object "brain" into H5AD format*
+
+```{r}
+# # Activate the package
+# library(SeuratDisk)
+# library(reticulate)
+# 
+# library(Seurat) # <-- Critical! This provides the method for Seurat → SingleCellExperiment
+# library(SingleCellExperiment)
+# 
+# # Start conversion to H5AD:
+# # 1. Remove problematic layers (scale.data causes HDF5 issues)
+# pbmc_postinfusion_idecel[["RNA"]] <- subset(
+#   pbmc_postinfusion_idecel[["RNA"]],
+#   layers = c("counts", "data")  # Keep only counts/data
+# )
+# 
+# # 2. Convert to SingleCellExperiment and to H5AD
+# sce <- as.SingleCellExperiment(pbmc_postinfusion_idecel)
+# 
+# library(zellkonverter)
+# 
+# writeH5AD(sce, file = "./Data_Grieb_CAR_Zenodo/pbmc_postinfusion_idecel.h5ad")
+
+brain
+
+########### METHOD 1 #############
+# Load required packages
+# library(Seurat)
+# library(SingleCellExperiment)
+# library(zellkonverter)
+# 
+# # Remove problematic layers (scale.data can cause HDF5 issues)
+# brain[["SCT"]] <- subset(
+#   brain[["SCT"]], 
+#   layers = c("counts", "data")  # Keep only essential layers
+# )
+# 
+# # Convert to SingleCellExperiment
+# sce <- as.SingleCellExperiment(brain)
+# 
+# # Save to H5AD (AnnData format)
+# writeH5AD(
+#   sce, 
+#   file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata.h5ad",
+#   verbose = TRUE  # Monitor conversion progress
+# )
+# 
+# ########### METHOD 2 #############
+# # Load required packages
+# library(Seurat)
+# library(SingleCellExperiment)
+# library(zellkonverter)
+# 
+# # Clean up layers properly
+# brain <- DietSeurat(
+#   brain,
+#   layers = c("counts", "data"),
+#   assays = c("SCT", "Spatial")
+# )
+# 
+# # Convert to SingleCellExperiment
+# sce <- as.SingleCellExperiment(brain)
+# 
+# # Add spatial coordinates
+# spatial_coords <- GetTissueCoordinates(brain)
+# colData(sce)$imagecol <- spatial_coords$imagecol
+# colData(sce)$imagerow <- spatial_coords$imagerow
+# 
+# # Save to H5AD
+# writeH5AD(sce, file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected.h5ad", verbose = TRUE)
+# 
+# # Check metadata transfer
+# head(colData(sce))  # Should match brain@meta.data
+# 
+# # Check spatial coordinates
+# head(colData(sce)$imagecol)
+
+
+########### METHOD 3: THE CORRECT WAY TO SAVE SPATIAL METADATA AS H5AD FORMAT ##############
+########### THIS METHOD INCLUDES THE INCORPORATION OF SPATIAL COORDINATES ########### 
+# Load required packages
+library(Seurat)
+library(SpatialExperiment)
+library(zellkonverter)
+
+# Extract spatial coordinates
+# spatial_coords <- GetTissueCoordinates(brain)  # Columns are x, y, cell
+
+# Convert to SpatialExperiment
+# spe <- SpatialExperiment(
+#   assays = list(
+#     counts = LayerData(brain, assay = "SCT", layer = "counts"),  # SCT counts
+#     logcounts = LayerData(brain, assay = "SCT", layer = "data")   # SCT normalized data
+#   ),
+#   colData = brain@meta.data,  # Transfer metadata
+#   spatialCoords = as.matrix(spatial_coords[, c("x", "y")])  # Use x and y columns
+# )
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# KEY FIX: Add coordinates to reducedDims for proper H5AD mapping
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# AnnData expects spatial coordinates in .obsm['spatial'], which maps to reducedDims in SingleCellExperiment
+# reducedDim(spe, "spatial") <- as.matrix(spatial_coords[, c("x", "y")])
+
+# Verify spatial coordinates
+# head(spatialCoords(spe))  # Check SpatialExperiment slot
+# Should show x and y
+# Output:
+#            x     y
+# AAACAAGTATCTCCCA-1 7237  8230
+# AAACAATCTACTAGCA-1 1611  4170
+# ...  
+# head(reducedDim(spe, "spatial"))  # Check reducedDims for H5AD
+
+# Save to H5AD
+# writeH5AD(spe, file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected3_withCoordinatesRegions.h5ad", verbose = TRUE)
+
+
+# Explanation:
+# reducedDim(spe, "spatial"):
+# Explicitly stores coordinates in the reducedDims slot of the SpatialExperiment object.
+# When writing to H5AD, zellkonverter maps reducedDims to .obsm in AnnData.
+# This ensures coordinates appear in adata.obsm['spatial'] in Python.
+# Why This Works:
+# .obsm in AnnData is designed for multi-dimensional annotations (e.g., spatial coordinates).
+# The reducedDims slot in SingleCellExperiment/SpatialExperiment directly translates to .obsm in H5AD.
+
+# VERIFICATION OF H5AD: Read H5AD back into R (optional)
+# library(zellkonverter)
+# spe_check <- readH5AD("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected3_withCoordinatesRegions.h5ad")
+
+# Confirm coordinates are in reducedDims
+# head(reducedDim(spe_check, "spatial"))  # Should match original x/y
+
+
+```
