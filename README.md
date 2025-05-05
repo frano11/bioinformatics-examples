@@ -1,6 +1,10 @@
-# Mouse Bulk RNAseq Pipeline
+# Repository Overview
 
-## NextFlow pipeline for quality control and trimming of fastq.gz files.
+This repository contains curated examples of my bioinformatics work, spanning bulk RNA-seq and spatial transcriptomics analyses. Below is a brief description of each file. More files and annotations will be added shortly.
+
+# Mouse Bulk RNA-seq Pipeline
+
+## 1. Quality Control and Trimming of `fastq.gz` Files.
 
 ### Processes
 - MD5 checks
@@ -9,7 +13,7 @@
 - MultiQC reports
 
 Go to: `main_fastqc_multiqc_trimming.nf`
-
+**Nextflow Pipeline:** [`main_fastqc_multiqc_trimming.nf`](main_fastqc_multiqc_trimming.nf)
 
 ## NextFlow pipeline for trimmed fq.gz files to raw read counts.
 
