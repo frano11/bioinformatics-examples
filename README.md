@@ -27,8 +27,8 @@ This repository contains curated examples of my bioinformatics work, spanning bu
 - MultiQC
 
 **Nextflow Pipeline:** 
-[`main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf`](main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf)
-[`vM25_multiqc_config.yaml`](vM25_multiqc_config.yaml)
+- [`main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf`](main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf)
+- [`vM25_multiqc_config.yaml`](vM25_multiqc_config.yaml)
 
 
 ## 3. Differential Expression Analysis
