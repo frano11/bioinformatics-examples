@@ -23,7 +23,7 @@ Go to: `main_fastqc_multiqc_trimming.nf`
 Go to: `main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf`
 
 
-## R pipeline from count matrix generation and data processing using DESeq2.
+## R pipeline for count matrix generation and data processing using DESeq2.
 
 ### Processes
 - Generation of count matrix .csv from raw read counts files
@@ -39,7 +39,7 @@ Go to: `bulk_RNAseq_L_M_count_matrix_DESeq2.R`
 
 # Mouse Spatial transcriptomics Pipeline
 
-## R pipeline from 10X Genomics Visium dataset from mouse brain slice
+## R pipeline of 10X Genomics Visium dataset from mouse brain slice
 
 ### Processes
 - Load spatial data and QC analysis
