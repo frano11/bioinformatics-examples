@@ -5,7 +5,7 @@ nextflow.enable.dsl = 2
 // ========================
 // Parameters & Directories
 // ========================
-params.input_dir = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/fastq_gz"
+params.input_dir = "./data/fastq_gz"
 
 params.results_dir          = "./results"
 params.fastqc_raw_dir       = "${params.results_dir}/fastqc_raw"
