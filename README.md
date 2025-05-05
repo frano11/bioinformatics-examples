@@ -42,7 +42,7 @@ This repository contains curated examples of my bioinformatics work, spanning bu
   - DEG tables
 - Gene Set Enrichment Analysis (GSEA)
 
-**R Script:** [`bulk_RNAseq_L_M_count_matrix_DESeq2.R`](bulk_RNAseq_L_M_count_matrix_DESeq2.R)
+**R Script:** [`bulk_RNAseq_count_matrix_DESeq2.R`](bulk_RNAseq_count_matrix_DESeq2.R)
 
 
 ---
