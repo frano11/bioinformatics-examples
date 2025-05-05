@@ -8,11 +8,7 @@ conflict_prefer("slice", "dplyr")
 conflict_prefer("count", "dplyr")
 
 # Define paths to FeatureCounts result folders
-paths <- c(
-  "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/results_L1_M29/FeatureCounts",
-  "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/results_L2_M30/FeatureCounts",
-  "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/results_L3_M31_L4_M32/FeatureCounts"
-)
+paths <- "/absolute/path/to/results/FeatureCounts"
 
 # Find all *_counts.txt files recursively
 count_files <- list.files(path = paths, pattern = "*_counts.txt$", full.names = TRUE)
@@ -48,7 +44,7 @@ count_matrix <- count_matrix %>%
   rename(Gene_Id = Geneid)
 
 # Save output
-write_csv(count_matrix, "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/count_matrix.csv")
+write_csv(count_matrix, "/absolute/path/to/R_count_matrix/count_matrix.csv")
 
 
 #################################################
@@ -90,7 +86,7 @@ count_matrix_annotated <- count_matrix_annotated %>%
 #   rename(Gene_Id = Geneid)
 
 # Save final annotated matrix
-write_csv(count_matrix_annotated, "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/count_matrix_annotated.csv")
+write_csv(count_matrix_annotated, "/absolute/path/to/R_count_matrix/count_matrix_annotated.csv")
 
 ##############################################
 ### VALIDATION OF GENE NAMES WITH ENSEMBL NAMES
@@ -124,7 +120,7 @@ count_matrix_filtered <- count_matrix_annotated %>%
 
 write_csv(
   count_matrix_filtered,
-  "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/count_matrix_annotated_clean.csv"
+  "/absolute/path/to/R_count_matrix/count_matrix_annotated_clean.csv"
 )
 
 # preview what you're removing
@@ -157,7 +153,7 @@ conflict_prefer("filter", "dplyr")
 ######## PART 1: PCA First
 
 # Load count matrix
-count_matrix <- read_csv("/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/count_matrix_annotated_clean.csv")
+count_matrix <- read_csv("/absolute/path/to/R_count_matrix/count_matrix_annotated_clean.csv")
 
 # Convert to data frame and set Gene_Id as rownames
 count_df <- count_matrix %>%
@@ -197,7 +193,7 @@ cat("Sample with max count:", sample_with_max, "\n")
 cat("Max count value:", max_value, "\n")
 
 # Load your annotated matrix
-count_matrix_annotated <- read_csv("/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/count_matrix_annotated_clean.csv")
+count_matrix_annotated <- read_csv("/absolute/path/to/R_count_matrix/count_matrix_annotated_clean.csv")
 
 # Search for your Ensembl ID (removing version if necessary)
 gene_of_interest <- count_matrix_annotated %>%
@@ -225,7 +221,7 @@ gene_symbol <- getBM(
   mart = mart
 )
 
-gene_symbol # Alb: Albumin, massively expressed in the liver
+gene_symbol # Alb: Albumin, massively expressed in the Tissue1
 
 ####################################################
 ####################################################
@@ -233,7 +229,7 @@ gene_symbol # Alb: Albumin, massively expressed in the liver
 # Create metadata
 sample_info <- data.frame(
   sample = colnames(count_df),
-  tissue = c("Liver", "Muscle", "Liver", "Muscle", "Liver", "Muscle", "Liver", "Muscle"),  # Adjust to match your samples
+  tissue = c("Tissue1", "Tissue2", "Tissue1", "Tissue2", "Tissue1", "Tissue2", "Tissue1", "Tissue2"),  # Adjust to match your samples
   row.names = colnames(count_df)
 )
 
@@ -275,7 +271,7 @@ p <- ggplot(pca_data, aes(PC1, PC2, color = tissue)) +
 
 # Save the figure with white background
 # ggsave(
-#   filename = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/pca_plot_pre_deseq2.png",
+#   filename = "/absolute/path/to/R_count_matrix/pca_plot_pre_deseq2.png",
 #   plot = p,
 #   width = 7, height = 7, dpi = 300,
 #   bg = "white"
@@ -381,7 +377,7 @@ view(res)
 
 # === MA Plot ===
 png("ma_plot.png", width = 800, height = 600)
-plotMA(res, ylim = c(-5, 5), main = "MA Plot - Liver vs Muscle")
+plotMA(res, ylim = c(-5, 5), main = "MA Plot - Tissue1 vs Tissue2")
 dev.off()
 # ✅ X-axis = "mean normalized counts" 
 # the x-axis represents the:
@@ -434,7 +430,7 @@ MA <- ggplot(res_df, aes(x = log10(mean_expression + 1), y = log2FC)) +
   coord_cartesian(ylim = c(-15,15)) +
   theme_minimal(base_size = 14) +
   labs(
-    title = "Custom MA Plot - Liver vs Muscle",
+    title = "Custom MA Plot - Tissue1 vs Tissue2",
     x = "log10(Mean Normalized Counts + 1)",
     y = "log2 Fold Change",
     color = "DE status"
@@ -444,7 +440,7 @@ MA
 
 # Save plot
 # ggsave(
-#   filename = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/ma_plot_prettier.png",
+#   filename = "/absolute/path/to/R_count_matrix/ma_plot_prettier.png",
 #   plot = MA,
 #   width = 9,
 #   height = 7,
@@ -453,7 +449,7 @@ MA
 # )
 
 
-# === Volcano Plot: Reference Tissue: Liver ===
+# === Volcano Plot: Reference Tissue: Tissue1 ===
 
 # Load ggrepel
 library(ggrepel)
@@ -511,7 +507,7 @@ volcano <- ggplot(res_annot, aes(x = log2FoldChange, y = plot_y)) + # y = -log10
   ) +
   theme_minimal(base_size = 14) +
   labs(
-    title = "Volcano Plot: Liver vs Muscle (Liver as Reference)",
+    title = "Volcano Plot: Tissue1 vs Tissue2 (Tissue1 as Reference)",
     subtitle = "Dashed lines: p-value < 0.05, |log2FC| > 1",
     x = "Log2 Fold Change",
     y = "-Log10 p-value",
@@ -526,7 +522,7 @@ print(volcano)
 
 # Save plot
 # ggsave(
-#   filename = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/volcano_plot_top20_balanced_Muscle.png",
+#   filename = "/absolute/path/to/R_count_matrix/volcano_plot_top20_balanced_Tissue2.png",
 #   plot = volcano,
 #   width = 9,
 #   height = 7,
@@ -534,19 +530,19 @@ print(volcano)
 #   bg = "white"
 # )
 
-# === Volcano Plot: (changing) Reference Tissue: Muscle ===
+# === Volcano Plot: (changing) Reference Tissue: Tissue2 ===
 
 # To check which tissue upregulates and which downregulates genes
-levels(dds$tissue) # output: "Liver"  "Muscle"
+levels(dds$tissue) # output: "Tissue1"  "Tissue2"
 
-# COMMENT: The output indicates that the last tissue, "Muscle" (the last level alphabetically), is compared to "Liver" (the first level alphabetically)
+# COMMENT: The output indicates that the last tissue, "Tissue2" (the last level alphabetically), is compared to "Tissue1" (the first level alphabetically)
 # COMMENT: Therefore:
-# Positive log2FoldChange (right side of the volcano plot) indicates genes that are upregulated in Muscle compared to Liver, based on 'volcano_score'. This means these genes have higher expression levels in your Muscle samples.
-# Negative log2FoldChange (left side of the volcano plot) indicates genes that are downregulated in Muscle compared to Liver, also based on 'volcano_score'. This also means these genes are upregulated in Liver compared to Muscle (they have higher expression levels in your Liver samples).
-# Therefore: the downregulated genes (negative LFC, on the left side of your volcano plot) correspond to genes that have higher expression in Liver compared to Muscle. 
+# Positive log2FoldChange (right side of the volcano plot) indicates genes that are upregulated in Tissue2 compared to Tissue1, based on 'volcano_score'. This means these genes have higher expression levels in your Tissue2 samples.
+# Negative log2FoldChange (left side of the volcano plot) indicates genes that are downregulated in Tissue2 compared to Tissue1, also based on 'volcano_score'. This also means these genes are upregulated in Tissue1 compared to Tissue2 (they have higher expression levels in your Tissue1 samples).
+# Therefore: the downregulated genes (negative LFC, on the left side of your volcano plot) correspond to genes that have higher expression in Tissue1 compared to Tissue2. 
 
-# If you want Liver as the upregulated direction (that shows LFC > 0 upregulated genes), you need to relevel your tissue factor to make Muscle the reference instead:
-dds$tissue <- relevel(dds$tissue, ref = "Muscle")
+# If you want Tissue1 as the upregulated direction (that shows LFC > 0 upregulated genes), you need to relevel your tissue factor to make Tissue2 the reference instead:
+dds$tissue <- relevel(dds$tissue, ref = "Tissue2")
 
 # After releveling, run again DESeq 
 dds <- DESeq(dds)
@@ -569,14 +565,14 @@ res_df <- as.data.frame(res) %>%
   left_join(count_matrix %>% select(Gene_name, Gene_Id), by = "Gene_Id") %>%
   relocate(Gene_name, .before = Gene_Id)
 
-# Volcano plot adapted for Liver vs Muscle
+# Volcano plot adapted for Tissue1 vs Tissue2
 # Create res_annot
 res_annot <- res_df %>%
   mutate(
     volcano_score = -log10(pvalue + 1e-300) * abs(log2FoldChange),
     direction = case_when(
-      padj < 0.05 & log2FoldChange > 0 ~ "Up",    # Up = upregulated in Liver
-      padj < 0.05 & log2FoldChange < 0 ~ "Down",  # Down = upregulated in Muscle
+      padj < 0.05 & log2FoldChange > 0 ~ "Up",    # Up = upregulated in Tissue1
+      padj < 0.05 & log2FoldChange < 0 ~ "Down",  # Down = upregulated in Tissue2
       TRUE ~ "Neutral"
     ),
     plot_y = pmin(-log10(pvalue + 1e-300), 400)  # Cap y at 400
@@ -600,7 +596,7 @@ res_annot <- res_annot %>%
   mutate(label = ifelse(Gene_Id %in% top_genes$Gene_Id, Gene_name, NA))
 
 # Volcano plot
-volcano_liver_vs_muscle <- ggplot(res_annot, aes(x = log2FoldChange, y = plot_y)) +
+volcano_Tissue1_vs_Tissue2 <- ggplot(res_annot, aes(x = log2FoldChange, y = plot_y)) +
   geom_point(aes(color = direction), alpha = 0.5, size = 1.5, stroke = 1, shape = 21) +
   geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
   geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
@@ -616,9 +612,9 @@ volcano_liver_vs_muscle <- ggplot(res_annot, aes(x = log2FoldChange, y = plot_y)
   ) +
   theme_minimal(base_size = 14) +
   labs(
-    title = "Volcano Plot: Liver vs Muscle (Muscle as Reference)",
+    title = "Volcano Plot: Tissue1 vs Tissue2 (Tissue2 as Reference)",
     subtitle = "Dashed lines: p-value < 0.05, |log2FC| > 1",
-    x = "Log2 Fold Change (positive = Liver up)",
+    x = "Log2 Fold Change (positive = Tissue1 up)",
     y = "-Log10 p-value",
     color = "Direction"
   ) +
@@ -626,19 +622,19 @@ volcano_liver_vs_muscle <- ggplot(res_annot, aes(x = log2FoldChange, y = plot_y)
   scale_y_continuous(limits = c(0, 400), breaks = seq(0, 400, 100))
 
 # Print
-print(volcano_liver_vs_muscle)
+print(volcano_Tissue1_vs_Tissue2)
 
 # Save plot
 # ggsave(
-#   filename = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/volcano_plot_top20_balanced_Liver.png",
-#   plot = volcano_liver_vs_muscle,
+#   filename = "/absolute/path/to/R_count_matrix/volcano_plot_top20_balanced_Tissue1.png",
+#   plot = volcano_Tissue1_vs_Tissue2,
 #   width = 9,
 #   height = 7,
 #   dpi = 600,
 #   bg = "white"
 # )
 
-# COMMENT: Why is 'Alb' has the highest raw count of all liver genes it is not in the top ten most upregulated genes? To answer this question, run this code:
+# COMMENT: Why is 'Alb' has the highest raw count of all Tissue1 genes it is not in the top ten most upregulated genes? To answer this question, run this code:
 res_annot %>%
   filter(Gene_name %in% c("Alb","Akr1c14", "Iqgap2", 
                         "Akr1c12", "Rida", "Cp", 
@@ -650,9 +646,9 @@ res_annot %>%
 
 library(patchwork)
 
-combined_volcano <- volcano + volcano_liver_vs_muscle +
+combined_volcano <- volcano + volcano_Tissue1_vs_Tissue2 +
   plot_layout(ncol = 2) +
-  plot_annotation(title = "Volcano Plots: Muscle vs Liver")
+  plot_annotation(title = "Volcano Plots: Tissue2 vs Tissue1")
 
 # ggsave(
 #   filename = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/combined_volcano_plots.pdf",
@@ -675,43 +671,43 @@ res_sig <- res %>%
   filter(padj < 0.05) %>% # Keep only genes whose  padj is below 0.05. ✅ These are called Differentially Expressed Genes (DEGs).
   arrange(padj) # Genes with the smallest padj (most significant) appear first.
 
-# write_csv(res_sig, "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/DE_genes_padj_0.05.csv")
+# write_csv(res_sig, "/absolute/path/to/R_count_matrix/DE_genes_padj_0.05.csv")
 
-# 2. Separate Upregulated (Liver) and Downregulated (Muscle)
+# 2. Separate Upregulated (Tissue1) and Downregulated (Tissue2)
 
 # PLEASE REMEMBER THIS: 
 # > levels(dds$tissue) 
-# [1] "Muscle" "Liver" # The first level ("Muscle") is the reference.
+# [1] "Tissue2" "Tissue1" # The first level ("Tissue2") is the reference.
 # Interpretation:
-# Positive LFC (> 0) means that Gene is upregulated in Liver compared to Muscle.
-# Negative LFC (< 0) means that Gene is downregulated in Liver (i.e., higher in Muscle).
+# Positive LFC (> 0) means that Gene is upregulated in Tissue1 compared to Tissue2.
+# Negative LFC (< 0) means that Gene is downregulated in Tissue1 (i.e., higher in Tissue2).
 
-# Upregulated in Liver
-res_up_liver <- res_sig %>%
+# Upregulated in Tissue1
+res_up_Tissue1 <- res_sig %>%
   filter(log2FoldChange > 0) %>%
   arrange(padj)
 
-# Upregulated in Muscle
-res_up_muscle <- res_sig %>%
+# Upregulated in Tissue2
+res_up_Tissue2 <- res_sig %>%
   filter(log2FoldChange < 0) %>%
   arrange(padj)
 
 # 3. Export to CSV
-# write_csv(res_up_liver, "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/DEGs_up_in_Liver_padj0.05.csv")
-# write_csv(res_up_muscle, "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/DEGs_up_in_Muscle_padj0.05.csv")
+# write_csv(res_up_Tissue1, "/absolute/path/to/R_count_matrix/DEGs_up_in_Tissue1_padj0.05.csv")
+# write_csv(res_up_Tissue2, "/absolute/path/to/R_count_matrix/DEGs_up_in_Tissue2_padj0.05.csv")
 
 # COMMENT:
 # Filter padj < 0.05	Keep only statistically significant genes
-# Filter log2FoldChange > 0	Genes expressed more in Liver than Muscle
-# Filter log2FoldChange < 0	Genes expressed more in Muscle than Liver
-# Gene Behavior: Alb has log2FC > 0 -> Alb is upregulated in Liver
-# Gene Behavior: Myh1 has log2FC < 0 -> Myh1 is upregulated in Muscle
+# Filter log2FoldChange > 0	Genes expressed more in Tissue1 than Tissue2
+# Filter log2FoldChange < 0	Genes expressed more in Tissue2 than Tissue1
+# Gene Behavior: Alb has log2FC > 0 -> Alb is upregulated in Tissue1
+# Gene Behavior: Myh1 has log2FC < 0 -> Myh1 is upregulated in Tissue2
 
-# 3. Count how many DEGs are upregulated in Liver and in Muscle
+# 3. Count how many DEGs are upregulated in Tissue1 and in Tissue2
 res_sig %>%
   mutate(direction = case_when(
-    log2FoldChange > 0 ~ "Up_in_Liver",
-    log2FoldChange < 0 ~ "Up_in_Muscle"
+    log2FoldChange > 0 ~ "Up_in_Tissue1",
+    log2FoldChange < 0 ~ "Up_in_Tissue2"
   )) %>%
   count(direction) %>%
   mutate(percent = round(100 * n / sum(n), 1))
@@ -756,10 +752,10 @@ actual_samples <- colnames(heatmap_mat)
 
 # Match manually — ensure sample names exist
 ordered_samples <- c(
-  "G1_0005-24_L_S1",  "G1_0005-24_M_S29",
-  "G1_0020-24_L_S2",  "G1_0020-24_M_S30",
-  "G1_0025-24_L_S3",  "G1_0025-24_M_S31",
-  "G1_0035-24_L_S4",  "G1_0035-24_M_S32"
+  "L1",  "M29",
+  "L2",  "M30",
+  "L3",  "M31",
+  "L4",  "M32"
 )
 
 # Filter only those present
@@ -774,12 +770,12 @@ rownames(sample_annot) <- colnames(vsd)
 sample_annot <- sample_annot[ordered_samples, , drop = FALSE]
 
 # === Plot and save at high resolution ===
-output_path <- "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/R_count_matrix/heatmap_top30_named_reordered_600dpi.png"
+# output_path <- "/absolute/path/to/R_count_matrix/heatmap_top30_named_reordered_600dpi.png"
 
 # Modify colors of "Tissue" annotation
 annotation_colors <- list(
-  Tissue = c(Liver = "#90EE90",  # light green
-             Muscle = "#AB82FF") # lavender
+  Tissue = c(Tissue1 = "#90EE90",  # light green
+             Tissue2 = "#AB82FF") # lavender
 )
 
 png(filename = output_path, width = 8, height = 10, units = "in", res = 600)
@@ -905,7 +901,7 @@ gseaplot2(gsea_res, geneSetID = gsea_res$ID[1], title = gsea_res$Description[1])
 gsea_df <- as.data.frame(gsea_go)
 
 # Write to CSV
-write_csv(gsea_df, "/Users/Frano/.../GSEA_GO_BP_results.csv")
+# write_csv(gsea_df, "/absolute/path/to/R_count_matrix/GSEA_GO_BP_results.csv")
 
 # Use filtered significant genes (Gene_name)
 gene_sig <- res_sig$Gene_name[!is.na(res_sig$Gene_name)]
@@ -928,7 +924,7 @@ dotplot(go_enrich, showCategory = 15, title = "GO Enrichment - Overrepresentatio
 go_df <- as.data.frame(go_enrich)
 
 # Write to CSV
-write_csv(go_df, "GO_Enrichment_BP_results.csv")
+# write_csv(go_df, "/absolute/path/to/R_count_matrix/GO_Enrichment_BP_results.csv")
 
 
 #======== Performing GSEA with KEGG and Reactome pathways ========
@@ -974,18 +970,18 @@ dotplot(gsea_reactome, showCategory = 15, title = "GSEA - Reactome pathways anal
 
 # ======== Visualizing Enrichment results by tissue ===========
 
-# 1. Genes upregulated in Liver
-gene_list_liver <- res_annot %>%
-  filter(log2FoldChange > 0) %>%               # Positive LFC = Liver up
+# 1. Genes upregulated in Tissue1
+gene_list_Tissue1 <- res_annot %>%
+  filter(log2FoldChange > 0) %>%               # Positive LFC = Tissue1 up
   drop_na(Gene_name, stat) %>%
   distinct(Gene_name, .keep_all = TRUE) %>%
   arrange(desc(stat)) %>%
   pull(stat, name = Gene_name)
 
 
-# 2. Genes upregulated in Muscle
-gene_list_muscle <- res_annot %>%
-  filter(log2FoldChange < 0) %>%               # Negative LFC = Muscle up
+# 2. Genes upregulated in Tissue2
+gene_list_Tissue2 <- res_annot %>%
+  filter(log2FoldChange < 0) %>%               # Negative LFC = Tissue2 up
   drop_na(Gene_name, stat) %>%
   distinct(Gene_name, .keep_all = TRUE) %>%
   arrange(desc(stat)) %>%
@@ -994,25 +990,25 @@ gene_list_muscle <- res_annot %>%
 
 
 # List of your gene symbols
-symbols_liver <- names(gene_list_liver)
+symbols_Tissue1 <- names(gene_list_Tissue1)
 
 # Check how many are valid mouse symbols
-valid_symbols <- symbols_liver[symbols_liver %in% keys(org.Mm.eg.db, keytype = "SYMBOL")]
+valid_symbols <- symbols_Tissue1[symbols_Tissue1 %in% keys(org.Mm.eg.db, keytype = "SYMBOL")]
 
 length(valid_symbols)         # How many are valid
-length(symbols_liver)         # Total
+length(symbols_Tissue1)         # Total
 
 # Also confirm gene names are recognized
-valid_symbols_liver <- names(gene_list_liver)[names(gene_list_liver) %in% keys(org.Mm.eg.db, keytype = "SYMBOL")]
-length(valid_symbols_liver)
+valid_symbols_Tissue1 <- names(gene_list_Tissue1)[names(gene_list_Tissue1) %in% keys(org.Mm.eg.db, keytype = "SYMBOL")]
+length(valid_symbols_Tissue1)
 
 # Optional: See a few missing ones
-setdiff(symbols_liver, valid_symbols)[1:10]
+setdiff(symbols_Tissue1, valid_symbols)[1:10]
 
 
 table(res_annot$direction)
 
-dds$tissue <- relevel(dds$tissue, ref = "Muscle")
+dds$tissue <- relevel(dds$tissue, ref = "Tissue2")
 
 
 
@@ -1020,9 +1016,9 @@ dds$tissue <- relevel(dds$tissue, ref = "Muscle")
 
 
 
-# GSEA for Liver
-gsea_liver <- gseGO(
-  geneList = gene_list_liver,
+# GSEA for Tissue1
+gsea_Tissue1 <- gseGO(
+  geneList = gene_list_Tissue1,
   OrgDb = org.Mm.eg.db,
   keyType = "SYMBOL",
   ont = "BP",
@@ -1032,9 +1028,9 @@ gsea_liver <- gseGO(
   verbose = TRUE
 )
 
-# GSEA for Muscle
-gsea_muscle <- gseGO(
-  geneList = gene_list_muscle,
+# GSEA for Tissue2
+gsea_Tissue2 <- gseGO(
+  geneList = gene_list_Tissue2,
   OrgDb = org.Mm.eg.db,
   keyType = "SYMBOL",
   ont = "BP",
@@ -1044,24 +1040,24 @@ gsea_muscle <- gseGO(
   verbose = TRUE
 )
 
-dotplot(gsea_liver, showCategory = 15, title = "Liver - GO BP Enrichment")
+dotplot(gsea_Tissue1, showCategory = 15, title = "Tissue1 - GO BP Enrichment")
 
-dotplot(gsea_muscle, showCategory = 15, title = "Muscle - GO BP Enrichment")
+dotplot(gsea_Tissue2, showCategory = 15, title = "Tissue2 - GO BP Enrichment")
 
 
 # library(clusterProfiler)
 
 # Define gene lists for each tissue
-gene_list_liver <- res_liver %>%
+gene_list_Tissue1 <- res_Tissue1 %>%
   filter(padj < 0.05) %>%
   pull(Gene_name)
 
-gene_list_muscle <- res_muscle %>%
+gene_list_Tissue2 <- res_Tissue2 %>%
   filter(padj < 0.05) %>%
   pull(Gene_name)
 
 # Create a list of gene sets
-gene_clusters <- list(Liver = gene_list_liver, Muscle = gene_list_muscle)
+gene_clusters <- list(Tissue1 = gene_list_Tissue1, Tissue2 = gene_list_Tissue2)
 
 # Perform GO enrichment analysis
 go_results <- compareCluster(geneClusters = gene_clusters,
