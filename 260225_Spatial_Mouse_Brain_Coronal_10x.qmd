@@ -26,8 +26,7 @@ execute:
 
 ## Spatial transcriptomics
 
-Tutorial: 
-<https://satijalab.org/seurat/articles/spatial_vignette>
+Tutorial: <https://satijalab.org/seurat/articles/spatial_vignette>
 
 Source: 10XGenomics, Mouse brain section (coronal) <https://www.10xgenomics.com/datasets/mouse-brain-section-coronal-1-standard-1-0-0>
 
@@ -79,7 +78,7 @@ conflict_prefer("width", "flextable")
 
 ```{r}
 # Load data
-data_dir = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal"
+data_dir = "/absolute/path/to/Spatial_Data_MouseBrainCoronal"
 brain <- Load10X_Spatial(data.dir = data_dir,
                          filename = "V1_Adult_Mouse_Brain_filtered_feature_bc_matrix.h5",
                          assay = "Spatial",
@@ -395,7 +394,7 @@ final_layout <- grid.arrange(
 )
 
 # Save
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_transcript_Visium_mouse_brain.png", final_layout, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_transcript_Visium_mouse_brain.png", final_layout, width = 16, height = 8, dpi = 600)
 
 # view(brain)
 brain
@@ -469,7 +468,7 @@ VlnPlot(
 )
 
 # Save DEG results
-# write.csv(all_markers, "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_mouse_brain_DEG_all_clusters.csv")
+# write.csv(all_markers, "/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_mouse_brain_DEG_all_clusters.csv")
 
 # Save Seurat object with markers
 # saveRDS(brain, file = "brain_with_markers.rds")
@@ -517,7 +516,7 @@ cluster3_cluster1_highestDEG <- SpatialFeaturePlot(
 print(cluster3_cluster1_highestDEG)
 
 # Save
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_highest_DEG_Visium_mouse_brain.png", cluster3_cluster1_highestDEG, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_highest_DEG_Visium_mouse_brain.png", cluster3_cluster1_highestDEG, width = 16, height = 8, dpi = 600)
 
 # Display a safe summary of the Seurat object
 str(brain, max.level = 2)  # Show top-level structure only
@@ -551,7 +550,7 @@ go_plot <- dotplot(enrich_result, showCategory = 10,
 print(go_plot)
 
 # ggsave(
-#   filename = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_brain_mouse_go_enrichment_highres.png",
+#   filename = "/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_brain_mouse_go_enrichment_highres.png",
 #   plot = go_plot,
 #   width = 12,                      # Wider for better label readability
 #   height = 8,
@@ -686,19 +685,19 @@ patch1 <- (p9 | p8) / p7
 print(patch1)
 
 # Save 'H&E (p9)'
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_H&E.png", p9, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_H&E.png", p9, width = 16, height = 8, dpi = 600)
 
 # Save 'UMAP_regions (p7)'
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_UMAP_regions.png", p7, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_UMAP_regions.png", p7, width = 16, height = 8, dpi = 600)
 
 # Save 'patch1'
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regions_patch.png", patch1, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regions_patch.png", patch1, width = 16, height = 8, dpi = 600)
 
 # Save 'Brain_regions (p8)'
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regions.png", p8, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regions.png", p8, width = 16, height = 8, dpi = 600)
 
 # Save 'Brain_regions (p8)'
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regionsNoLegends.png", p8, width = 16, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_Visium_mouse_brain_regionsNoLegends.png", p8, width = 16, height = 8, dpi = 600)
 
 # Define region-specific markers (expand with more genes)
 region_markers <- list(
@@ -928,7 +927,7 @@ print(ft)
 # Save 'ft'
 # Convert flextable to a grob
 # ft_grob2 <- flextable::gen_grob(ft)
-# ggsave("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/Spatial_transcript_Visium_mouse_brain_regions_table.png", ft_grob2, width = 10, height = 8, dpi = 600)
+# ggsave("/absolute/path/to/Spatial_Data_MouseBrainCoronal/Spatial_transcript_Visium_mouse_brain_regions_table.png", ft_grob2, width = 10, height = 8, dpi = 600)
 
 # view(brain@meta.data)
 
@@ -1049,7 +1048,7 @@ print(ft_markers)
 # view(brain@meta.data)
 
 # Save Seurat object 'with markers'brain'
-# saveRDS(brain, file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_transcript_Visium_mouse_brain_regions.rds")
+# saveRDS(brain, file = "/absolute/path/to/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_transcript_Visium_mouse_brain_regions.rds")
 
 ```
 
@@ -1062,20 +1061,6 @@ print(ft_markers)
 # 
 # library(Seurat) # <-- Critical! This provides the method for Seurat → SingleCellExperiment
 # library(SingleCellExperiment)
-# 
-# # Start conversion to H5AD:
-# # 1. Remove problematic layers (scale.data causes HDF5 issues)
-# pbmc_postinfusion_idecel[["RNA"]] <- subset(
-#   pbmc_postinfusion_idecel[["RNA"]],
-#   layers = c("counts", "data")  # Keep only counts/data
-# )
-# 
-# # 2. Convert to SingleCellExperiment and to H5AD
-# sce <- as.SingleCellExperiment(pbmc_postinfusion_idecel)
-# 
-# library(zellkonverter)
-# 
-# writeH5AD(sce, file = "./Data_Grieb_CAR_Zenodo/pbmc_postinfusion_idecel.h5ad")
 
 brain
 
@@ -1097,7 +1082,7 @@ brain
 # # Save to H5AD (AnnData format)
 # writeH5AD(
 #   sce, 
-#   file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata.h5ad",
+#   file = "/absolute/path/to/Spatial_Data_MouseBrainCoronal/brain_metadata.h5ad",
 #   verbose = TRUE  # Monitor conversion progress
 # )
 # 
@@ -1123,7 +1108,7 @@ brain
 # colData(sce)$imagerow <- spatial_coords$imagerow
 # 
 # # Save to H5AD
-# writeH5AD(sce, file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected.h5ad", verbose = TRUE)
+# writeH5AD(sce, file = /absolute/path/to/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected.h5ad", verbose = TRUE)
 # 
 # # Check metadata transfer
 # head(colData(sce))  # Should match brain@meta.data
@@ -1169,7 +1154,7 @@ library(zellkonverter)
 # head(reducedDim(spe, "spatial"))  # Check reducedDims for H5AD
 
 # Save to H5AD
-# writeH5AD(spe, file = "~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected3_withCoordinatesRegions.h5ad", verbose = TRUE)
+# writeH5AD(spe, file = "/absolute/path/to/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected3_withCoordinatesRegions.h5ad", verbose = TRUE)
 
 
 # Explanation:
@@ -1183,7 +1168,7 @@ library(zellkonverter)
 
 # VERIFICATION OF H5AD: Read H5AD back into R (optional)
 # library(zellkonverter)
-# spe_check <- readH5AD("~/Desktop/Bioinfo_2025/250127_Doppelganger/Spatial_transcriptomics_Tutorials/Spatial_Mouse_Brain_Section_Coronal_10xGenomics/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected3_withCoordinatesRegions.h5ad")
+# spe_check <- readH5AD("/absolute/path/to/Spatial_Data_MouseBrainCoronal/brain_metadata_corrected3_withCoordinatesRegions.h5ad")
 
 # Confirm coordinates are in reducedDims
 # head(reducedDim(spe_check, "spatial"))  # Should match original x/y
