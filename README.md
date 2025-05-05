@@ -23,7 +23,7 @@ Go to: `main_fastqc_multiqc_trimming.nf`
 Go to: `main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf`
 
 
-## R pipeline for count matrix generation and data processing using DESeq2.
+## R pipeline for count matrix generation and data processing.
 
 ### Processes
 - Generation of count matrix .csv from raw read counts files
