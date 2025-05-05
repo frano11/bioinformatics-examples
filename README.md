@@ -1,7 +1,6 @@
 # Mouse Bulk RNAseq Pipeline
 
-## NextFlow pipeline for quality control and trimming of fastq.gz files
-from mouse samples.
+## NextFlow pipeline for quality control and trimming of fastq.gz files.
 
 ### Processes
 - MD5 checks
@@ -12,7 +11,7 @@ from mouse samples.
 Go to: `main_fastqc_multiqc_trimming.nf`
 
 
-## NextFlow pipeline for trimmed fq.gz files to raw read counts from mouse samples.
+## NextFlow pipeline for trimmed fq.gz files to raw read counts.
 
 ### Processes
 - HISAT2 alignment
@@ -24,7 +23,7 @@ Go to: `main_fastqc_multiqc_trimming.nf`
 Go to: `main_analysis_prebuilt_HISAT2_only_FeatCounts_multi_vM25.nf`
 
 
-## R pipeline from count matrix generation and data processing using DESeq2 from mouse samples.
+## R pipeline from count matrix generation and data processing using DESeq2.
 
 ### Processes
 - Generation of count matrix .csv from raw read counts files
@@ -40,9 +39,9 @@ Go to: `bulk_RNAseq_L_M_count_matrix_DESeq2.R`
 
 # Mouse Spatial transcriptomics Pipeline
 
-R pipeline from 10X Genomics Visium dataset from mouse brain slice
+## R pipeline from 10X Genomics Visium dataset from mouse brain slice
 
-## Processes
+### Processes
 - Load spatial data and QC analysis
 - Data pre-processing
 - Dimensional reduction, clustering and visualizations
