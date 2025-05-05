@@ -7,18 +7,19 @@ This repository contains curated examples of my bioinformatics work, spanning bu
 ## 1. Quality Control and Trimming of `fastq.gz` Files.
 
 ### Processes
-- MD5 checks
-- FastQC (raw/trimmed)
-- Trim Galore
-- MultiQC reports
+- MD5 checksum validation
+- FastQC on raw and trimmed reads
+- Trim Galore (adapter and quality trimming)
+- MultiQC report aggregation
 
-Go to: `main_fastqc_multiqc_trimming.nf`
 **Nextflow Pipeline:** [`main_fastqc_multiqc_trimming.nf`](main_fastqc_multiqc_trimming.nf)
 
-## NextFlow pipeline for trimmed fq.gz files to raw read counts.
+---
+
+## 2. Alignment and Gene Count Quantification.
 
 ### Processes
-- HISAT2 alignment
+- Alignment using HISAT2
 - Identification of duplicates  
 - Feature counts
 - QC metrics (rRNA counts, strandness, raw duplicates)
