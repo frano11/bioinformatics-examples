@@ -4,14 +4,14 @@ nextflow.enable.dsl = 2
 // ----------------------
 // PARAMETERS
 // ----------------------
-params.reads = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_qc/results/trimmed/*.fq.gz"
-params.hisat2_index = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/genome/hisat2_index/mm10/genome"
-params.annotation = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/genome/gtf/gencode.vM25.annotation.gtf"
-params.bed12 = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/genome/BED12/gencode.vM25.annotation.bed12"
-params.rrna_gtf = "/Users/Frano/Desktop/Bioinfo_2025/250127_Doppelganger/April_2025_Bulk_RNAseq/nextflow_alignment/genome/gtf/gencode.vM25_rRNA.gtf"
-params.picard_path = "/Users/Frano/bin/picard.jar"
-params.outdir = "results"
-params.multiqc_config = "vM25_multiqc_config.yaml"
+params.reads            = "./data/trimmed/*.fq.gz"
+params.hisat2_index     = "./data/genome/hisat2_index/mm10/genome"
+params.annotation       = "./data/genome/gtf/gencode.vM25.annotation.gtf"
+params.bed12            = "./data/genome/BED12/gencode.vM25.annotation.bed12"
+params.rrna_gtf         = "./data/genome/gtf/gencode.vM25_rRNA.gtf"
+params.picard_path      = "./bin/picard.jar"
+params.outdir           = "./results"
+params.multiqc_config   = "./config/vM25_multiqc_config.yaml"
 
 // ----------------------
 // CHANNEL DEFINITIONS

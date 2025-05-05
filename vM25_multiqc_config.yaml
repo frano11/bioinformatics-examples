@@ -1,0 +1,17 @@
+extra_fn_clean_exts:
+  - '.fq'
+  - '_counts.txt.summary'
+  - '_dedup_metrics'
+  - '_raw_dup_metrics'
+  - '_hisat2.log'
+  - '_rrna_counts'
+  - '_strandedness'
+
+custom_plot_config:
+  strandedness:
+    title: "Strand Specificity"
+    ylab: "Fraction of Reads"
+  rrna_content:
+    title: "rRNA Content"
+    ylab: "Read Counts"
+
