@@ -65,5 +65,27 @@ This repository contains curated examples of my bioinformatics work, spanning bu
 **R Quarto Document:** [`260225_Spatial_Mouse_Brain_Coronal_10x.qmd`](260225_Spatial_Mouse_Brain_Coronal_10x.qmd)
 
 
+---
 
+
+# V(D)J TCR/BRC clonotype and cluster annotation analysis
+
+
+## R pipeline of 10X Genomics dataset from healthy human PBMC sample
+
+### Processes
+- Combination of contigs
+- Quantification of chains alleles per clone
+- Frequencies of alleles
+- Clonal visualizations
+- Quantification/frequency of clones
+- Quality control analysis and cell filtering
+- Data normalization and preprocessing
+- PCA and determination of dimensionality
+- Cell clustering
+- Cell annotation and differential gene expression per cluster
+
+**PDF Document:** 
+- [`2024_ABI_Internship_UMM_PartI.pdf`](2024_ABI_Internship_UMM_PartI.pdf)
+- [`2024_ABI_Internship_UMM_PartII.pdf`](2024_ABI_Internship_UMM_PartII.pdf)
 
